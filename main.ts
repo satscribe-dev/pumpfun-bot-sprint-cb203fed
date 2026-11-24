@@ -10,9 +10,17 @@
 //
 // Fee math that sets the numbers: one trade costs 95 + 30 bps of curve fees
 // plus 5,000 + 100,000 lamports of tx fees, so a 0.05 SOL round trip costs
-// about 2.7% of size. A +35% take-profit against a -12% stop-loss needs
+// about 2.9% of size. A +30% take-profit against a -10% stop-loss needs
 // roughly a 1-in-4 win rate to break even, before the trailing stop lets
 // runners pay for the losers.
+//
+// v2 changes (from the v1 grade: -1.119 SOL, win rate 20.5%): the entry is
+// tightened (rise +12%, 6+ buys, 75% buy share, 30 trades), the trailing
+// stop is loosened so it stops cutting mid-size winners (arms at +25%,
+// sells 25% below the peak), and the entry price is re-anchored to the
+// fill-time curve price — buys fill 2 slots after the decision, usually at
+// a worse price, which made the v1 stop-loss closer and the take-profit
+// further than the decision-time numbers suggested.
 //
 // Written from scratch in this session for the
 // u-riidzhsn-pump-fun-bot-sprint-make-bot-and-win-cb203fed bounty.
@@ -27,23 +35,23 @@ const BUY_SIZE_LAMPORTS = 50_000_000n;
 /** Smallest buy worth sending (0.02 SOL): below this the fixed tx fee eats the edge. */
 const MIN_BUY_LAMPORTS = 20_000_000n;
 /** Only coins this young (in trades seen) may be entered. */
-const MAX_ENTRY_TRADES = 40;
-/** Entry needs price up at least +8% off its first print (bps). */
-const ENTRY_RISE_BPS = 800;
+const MAX_ENTRY_TRADES = 30;
+/** Entry needs price up at least +12% off its first print (bps). */
+const ENTRY_RISE_BPS = 1200;
 /** Never chase a coin already up +80% off its first print (bps). */
 const ENTRY_MAX_RISE_BPS = 8000;
 /** Entry needs at least this many buy trades seen. */
-const ENTRY_MIN_BUYS = 5;
-/** Entry needs buys to be at least 70% of volume seen (bps). */
-const ENTRY_MIN_BUY_SHARE_BPS = 7000;
-/** Take profit: sell at +35% off the entry price (bps). */
-const TAKE_PROFIT_BPS = 3500;
-/** Stop loss: sell at -12% off the entry price (bps). */
-const STOP_LOSS_BPS = 1200;
-/** Trailing stop arms once the coin is +15% off entry (bps). */
-const TRAIL_ARM_BPS = 1500;
-/** Trailing stop: sell 20% below the peak since entry (bps). */
-const TRAIL_DROP_BPS = 2000;
+const ENTRY_MIN_BUYS = 6;
+/** Entry needs buys to be at least 75% of volume seen (bps). */
+const ENTRY_MIN_BUY_SHARE_BPS = 7500;
+/** Take profit: sell at +30% off the entry price (bps). */
+const TAKE_PROFIT_BPS = 3000;
+/** Stop loss: sell at -10% off the entry price (bps). */
+const STOP_LOSS_BPS = 1000;
+/** Trailing stop arms once the coin is +25% off entry (bps). */
+const TRAIL_ARM_BPS = 2500;
+/** Trailing stop: sell 25% below the peak since entry (bps). */
+const TRAIL_DROP_BPS = 2500;
 /** Longest hold, in slots (~0.4 s each, so ~10 minutes). */
 const MAX_HOLD_SLOTS = 1500;
 /** Slippage tolerance on every order (5%). */
@@ -102,9 +110,23 @@ function onBatch(state: BotState, batch: Batch): OrderInput[] {
   const orders: OrderInput[] = [];
   const touched = new Set<string>();
 
-  // 1. Fold this batch's fills in: a filled buy marks the mint as traded.
+  // 1. Fold this batch's fills in: a filled buy marks the mint as traded,
+  // and re-anchors its entry price to the fill-time curve price (the fill
+  // lands 2 slots after the decision, usually worse than the decision
+  // price, so the decision price would misplace the stop and the target).
   for (const fill of batch.fills) {
-    if (fill.side === "buy" && fill.status === "filled") traded.add(fill.mint);
+    if (fill.side === "buy" && fill.status === "filled") {
+      traded.add(fill.mint);
+      const fillPrice = priceOf(state, fill.mint);
+      const prior = entries.get(fill.mint);
+      if (fillPrice > 0) {
+        entries.set(fill.mint, {
+          entryPrice: fillPrice,
+          entrySlot: prior !== undefined ? prior.entrySlot : batch.slot,
+          peak: fillPrice,
+        });
+      }
+    }
   }
 
   // 2. Update per-coin flow stats from this batch's events.
