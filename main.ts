@@ -14,10 +14,10 @@
 // roughly a 1-in-4 win rate to break even, before the trailing stop lets
 // runners pay for the losers.
 //
-// v4b changes (on top of v4a, which graded behaviour-identical to v2):
-// take-profit +30% -> +18%, to bank mid-size winners more often. Entry
-// stays at +5% (v4a), SL -10%, trailing +25% arm / -25% drop, entry
-// re-anchored to fill-time price.
+// v4c changes (probe along the same TP axis as v4b): take-profit +18% ->
+// +12%, to see whether the v4b gain keeps growing as TP shrinks. Entry
+// stays at +5% (v4a), SL -10%, trailing +25% arm / -25% drop (never arms
+// below a +12% TP), entry re-anchored to fill-time price.
 //
 // Written from scratch in this session for the
 // u-riidzhsn-pump-fun-bot-sprint-make-bot-and-win-cb203fed bounty.
@@ -41,8 +41,8 @@ const ENTRY_MAX_RISE_BPS = 8000;
 const ENTRY_MIN_BUYS = 6;
 /** Entry needs buys to be at least 75% of volume seen (bps). */
 const ENTRY_MIN_BUY_SHARE_BPS = 7500;
-/** Take profit: sell at +18% off the entry price (bps). */
-const TAKE_PROFIT_BPS = 1800;
+/** Take profit: sell at +12% off the entry price (bps). */
+const TAKE_PROFIT_BPS = 1200;
 /** Stop loss: sell at -10% off the entry price (bps). */
 const STOP_LOSS_BPS = 1000;
 /** Trailing stop arms once the coin is +25% off entry (bps). */
