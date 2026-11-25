@@ -19,6 +19,18 @@
 // reverted). Entry stays selective (min 10 buys, 85% buy share), trailing
 // +25% arm / -25% drop, time-exit 1500 slots.
 //
+// v6 changes (research-first, on top of v5b): one new entry filter —
+// real SOL reserve at entry must be >= 7 SOL. Dev research (first-hit
+// simulator, cohort n=125): real reserve separates winners monotonically
+// (terciles WR 14.3% -> 26.2% -> 36.6%; best decile cut >=7.28 SOL gives
+// WR 38%, EV -0.00047/trade vs cohort -0.00204). Avg buy size correlates
+// 0.97 with it (same axis: big money in early), trade speed only 0.40-0.43
+// (partly independent). No single signal flips EV positive offline; the
+// two-signal combo that does (real>=7.28 AND speed>=5.5, n=28, EV +0.00123)
+// was REJECTED: post-hoc scanned thresholds, tiny n, guardrail risk
+// (offline n=28 could grade below the 20-coin floor). Threshold rounded
+// 7.28 -> 7.0 SOL to avoid false precision. All other params unchanged.
+//
 // Written from scratch in this session for the
 // u-riidzhsn-pump-fun-bot-sprint-make-bot-and-win-cb203fed bounty.
 
@@ -41,6 +53,8 @@ const ENTRY_MAX_RISE_BPS = 8000;
 const ENTRY_MIN_BUYS = 10;
 /** Entry needs buys to be at least 85% of volume seen (bps). */
 const ENTRY_MIN_BUY_SHARE_BPS = 8500;
+/** v6: entry needs real SOL reserve >= 7 SOL (real_quote_reserves on SOL curves). */
+const ENTRY_MIN_REAL_RESERVE_LAMPORTS = 7_000_000_000n;
 /** Take profit: sell at +18% off the entry price (bps). */
 const TAKE_PROFIT_BPS = 1800;
 /** Stop loss: sell at -6% off the entry price (bps). */
@@ -218,6 +232,9 @@ function onBatch(state: BotState, batch: Batch): OrderInput[] {
       if (price <= 0) continue;
       if (price < coin.firstPrice * (1 + ENTRY_RISE_BPS / 10_000)) continue;
       if (price > coin.firstPrice * (1 + ENTRY_MAX_RISE_BPS / 10_000)) continue;
+      const curve = state.curves.get(mint);
+      if (curve === undefined) continue;
+      if (curve.real_quote_reserves < ENTRY_MIN_REAL_RESERVE_LAMPORTS) continue;
       let size = BUY_SIZE_LAMPORTS;
       const cap = state.maxBuyLamports(mint);
       if (cap < size) size = cap;
