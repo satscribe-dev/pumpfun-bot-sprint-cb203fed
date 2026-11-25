@@ -14,11 +14,10 @@
 // roughly a 1-in-4 win rate to break even, before the trailing stop lets
 // runners pay for the losers.
 //
-// v5a changes (on top of v4b; cherry-picked onto main past the v4c probe):
-// entry more selective: at least 10 buy trades (was 6) and buys at least
-// 85% of volume seen (was 75%). Entry rise stays +5% (v4a, proven
-// behaviour-identical to +12% in v2), TP +18% (v4c's +12% probe reverted),
-// SL -10%, trailing +25% arm / -25% drop, time-exit 1500 slots.
+// v5b changes (on top of v5a; cherry-picked onto main past the v4c probe):
+// stop-loss -10% -> -6%, paired with take-profit +18% (v4c's +12% probe
+// reverted). Entry stays selective (min 10 buys, 85% buy share), trailing
+// +25% arm / -25% drop, time-exit 1500 slots.
 //
 // Written from scratch in this session for the
 // u-riidzhsn-pump-fun-bot-sprint-make-bot-and-win-cb203fed bounty.
@@ -44,8 +43,8 @@ const ENTRY_MIN_BUYS = 10;
 const ENTRY_MIN_BUY_SHARE_BPS = 8500;
 /** Take profit: sell at +18% off the entry price (bps). */
 const TAKE_PROFIT_BPS = 1800;
-/** Stop loss: sell at -10% off the entry price (bps). */
-const STOP_LOSS_BPS = 1000;
+/** Stop loss: sell at -6% off the entry price (bps). */
+const STOP_LOSS_BPS = 600;
 /** Trailing stop arms once the coin is +25% off entry (bps). */
 const TRAIL_ARM_BPS = 2500;
 /** Trailing stop: sell 25% below the peak since entry (bps). */
