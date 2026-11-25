@@ -14,13 +14,10 @@
 // roughly a 1-in-4 win rate to break even, before the trailing stop lets
 // runners pay for the losers.
 //
-// v2 changes (from the v1 grade: -1.119 SOL, win rate 20.5%): the entry is
-// tightened (rise +12%, 6+ buys, 75% buy share, 30 trades), the trailing
-// stop is loosened so it stops cutting mid-size winners (arms at +25%,
-// sells 25% below the peak), and the entry price is re-anchored to the
-// fill-time curve price — buys fill 2 slots after the decision, usually at
-// a worse price, which made the v1 stop-loss closer and the take-profit
-// further than the decision-time numbers suggested.
+// v4a changes (from the v2 grade: -0.624 SOL, win rate 24.3%): the entry is
+// moved earlier (rise +5% instead of +12%) to catch the burst instead of
+// chasing its peak; everything else is v2 unchanged (TP +30% / SL -10%,
+// trailing +25% arm / -25% drop, entry re-anchored to fill-time price).
 //
 // Written from scratch in this session for the
 // u-riidzhsn-pump-fun-bot-sprint-make-bot-and-win-cb203fed bounty.
@@ -36,8 +33,8 @@ const BUY_SIZE_LAMPORTS = 50_000_000n;
 const MIN_BUY_LAMPORTS = 20_000_000n;
 /** Only coins this young (in trades seen) may be entered. */
 const MAX_ENTRY_TRADES = 30;
-/** Entry needs price up at least +12% off its first print (bps). */
-const ENTRY_RISE_BPS = 1200;
+/** Entry needs price up at least +5% off its first print (bps). */
+const ENTRY_RISE_BPS = 500;
 /** Never chase a coin already up +80% off its first print (bps). */
 const ENTRY_MAX_RISE_BPS = 8000;
 /** Entry needs at least this many buy trades seen. */
